@@ -79,6 +79,19 @@
             margin-bottom: 15px;
             color: #333;
         }
+        .filter-group {
+            margin: 10px;
+            display: inline-block;
+        }
+        .filter-group label {
+            margin-right: 5px;
+        }
+        input[type="datetime-local"] {
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
@@ -91,10 +104,13 @@
     </div>
 
     <div class="filters">
-        <div>
-            <label>日期范围：</label>
-            <input type="date" id="start_date">
-            <input type="date" id="end_date">
+        <div class="filter-group">
+            <label for="start_date">开始时间:</label>
+            <input type="datetime-local" id="start_date" name="start_date">
+        </div>
+        <div class="filter-group">
+            <label for="end_date">结束时间:</label>
+            <input type="datetime-local" id="end_date" name="end_date">
         </div>
         <div>
             <label>最近场次：</label>
@@ -163,10 +179,13 @@
             const loading = document.querySelector('.loading');
             loading.style.display = 'block';
             
+            const startDate = document.getElementById('start_date').value;
+            const endDate = document.getElementById('end_date').value;
+            
             const params = new URLSearchParams({
                 mode: currentMode,
-                start_date: document.getElementById('start_date').value,
-                end_date: document.getElementById('end_date').value,
+                start_date: startDate ? startDate.replace('T', ' ') : '',
+                end_date: endDate ? endDate.replace('T', ' ') : '',
                 last_matches: document.getElementById('last_matches').value,
                 latest_only: document.getElementById('latest_only').checked,
                 level: document.getElementById('level_filter').value
@@ -205,6 +224,11 @@
                     loading.style.display = 'none';
                 });
         }
+
+        // 移除默认时间设置，直接调用更新
+        document.addEventListener('DOMContentLoaded', function() {
+            updateStats();
+        });
     </script>
 </body>
 </html> 

@@ -56,11 +56,15 @@ def read_game_data(game_mode, start_date=None, end_date=None, last_matches=None,
                             timestamp = int(timestamp)
                             date = datetime.fromtimestamp(timestamp)
                             
-                            # 日期筛选
-                            if start_date and date < datetime.strptime(start_date, '%Y-%m-%d'):
-                                continue
-                            if end_date and date > datetime.strptime(end_date, '%Y-%m-%d'):
-                                continue
+                            # 日期筛选 - 添加时分秒
+                            if start_date:
+                                start_datetime = datetime.strptime(f"{start_date} 00:00:00", '%Y-%m-%d %H:%M:%S')
+                                if date < start_datetime:
+                                    continue
+                            if end_date:
+                                end_datetime = datetime.strptime(f"{end_date} 23:59:59", '%Y-%m-%d %H:%M:%S')
+                                if date > end_datetime:
+                                    continue
                             
                             # 等级筛选
                             if level_filter and int(level) != int(level_filter):
