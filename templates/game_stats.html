@@ -73,6 +73,12 @@
             font-weight: bold;
             background-color: #f0f8ff;
         }
+        .total-matches {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+        }
     </style>
 </head>
 <body>
@@ -117,6 +123,9 @@
     <div class="loading">加载中...</div>
     
     <div class="game-mode">
+        <div class="total-matches">
+            总场次: <span id="total-matches">{{ total_matches }}</span>
+        </div>
         <table class="stats-table">
             <thead>
                 <tr>
@@ -168,6 +177,9 @@
                 .then(data => {
                     const tbody = document.getElementById('stats-body');
                     tbody.innerHTML = '';
+                    
+                    // 更新总场次显示
+                    document.getElementById('total-matches').textContent = data.total_matches;
                     
                     // 按胜率排序
                     data.stats.sort((a, b) => parseFloat(b.winrate) - parseFloat(a.winrate));

@@ -143,26 +143,33 @@ def get_stats():
     end_date = request.args.get('end_date')
     last_matches = request.args.get('last_matches')
     latest_only = request.args.get('latest_only') == 'true'
-    level_filter = request.args.get('level')  # 新增等级过滤参数
+    level_filter = request.args.get('level')
     
     df = read_game_data(game_mode, start_date, end_date, last_matches, latest_only, level_filter)
     if df.empty:
-        return jsonify({'stats': []})
+        return jsonify({'stats': [], 'total_matches': 0})
         
     stats = calculate_winrates(df)
-    return jsonify({'stats': stats})
+    total_matches = len(df)  # 计算总场次
+    
+    return jsonify({
+        'stats': stats,
+        'total_matches': total_matches
+    })
 
 @app.route('/')
 def index():
     # 获取第一个玩法的默认数据
-    default_mode = list(GAME_MODES.keys())[0]  # 获取第一个玩法的key
-    df = read_game_data(default_mode, latest_only=True)  # 默认显示最新数据
+    default_mode = list(GAME_MODES.keys())[0]
+    df = read_game_data(default_mode, latest_only=True)
     default_stats = calculate_winrates(df) if not df.empty else []
+    total_matches = len(df)  # 计算默认数据的总场次
     
     return render_template('game_stats.html', 
                          game_modes=GAME_MODES,
                          default_mode=default_mode,
-                         default_stats=default_stats)
+                         default_stats=default_stats,
+                         total_matches=total_matches)  # 传递总场次到模板
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True) 
