@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>对战数据统计</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .game-mode {
+            background-color: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .game-mode h2 {
+            color: #333;
+            margin-top: 0;
+        }
+        .stats-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        .stats-table th, .stats-table td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        .stats-table th {
+            background-color: #f8f8f8;
+        }
+        .winrate {
+            color: #2196F3;
+            font-weight: bold;
+        }
+        .matches {
+            color: #666;
+        }
+        .tabs {
+            margin-bottom: 20px;
+        }
+        .tab {
+            padding: 10px 20px;
+            margin-right: 5px;
+            border: none;
+            background-color: #f0f0f0;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .tab.active {
+            background-color: #2196F3;
+            color: white;
+        }
+        .filters {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f8f8f8;
+            border-radius: 4px;
+        }
+        .filters input, .filters button {
+            margin: 5px;
+            padding: 5px;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            display: none;
+        }
+        .top-five {
+            font-weight: bold;
+            background-color: #f0f8ff;
+        }
+    </style>
+</head>
+<body>
+    <h1>对战数据统计</h1>
+    
+    <div class="tabs">
+        {% for code, name in game_modes.items() %}
+        <button class="tab {% if code == default_mode %}active{% endif %}" data-mode="{{ code }}">{{ name }}</button>
+        {% endfor %}
+    </div>
+
+    <div class="filters">
+        <div>
+            <label>日期范围：</label>
+            <input type="date" id="start_date">
+            <input type="date" id="end_date">
+        </div>
+        <div>
+            <label>最近场次：</label>
+            <input type="number" id="last_matches" min="1" placeholder="输入场次数">
+        </div>
+        <div>
+            <label>等级段：</label>
+            <select id="level_filter">
+                <option value="">全部</option>
+                <option value="1">等级1</option>
+                <option value="2">等级2</option>
+                <option value="3">等级3</option>
+                <option value="4">等级4</option>
+                <option value="5">等级5</option>
+            </select>
+        </div>
+        <div>
+            <label>
+                <input type="checkbox" id="latest_only" checked>
+                仅显示最新数据
+            </label>
+        </div>
+        <button onclick="updateStats()">应用筛选</button>
+    </div>
+
+    <div class="loading">加载中...</div>
+    
+    <div class="game-mode">
+        <table class="stats-table">
+            <thead>
+                <tr>
+                    <th>职业/流派</th>
+                    <th>胜率</th>
+                    <th>场次</th>
+                </tr>
+            </thead>
+            <tbody id="stats-body">
+                {% for stat in default_stats %}
+                <tr>
+                    <td>{{ stat.class_name }}</td>
+                    <td class="winrate">{{ stat.winrate }}%</td>
+                    <td class="matches">{{ stat.matches }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        let currentMode = '{{ default_mode }}';
+        
+        // 初始化标签页
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                currentMode = tab.dataset.mode;
+                updateStats();
+            });
+        });
+        
+        function updateStats() {
+            const loading = document.querySelector('.loading');
+            loading.style.display = 'block';
+            
+            const params = new URLSearchParams({
+                mode: currentMode,
+                start_date: document.getElementById('start_date').value,
+                end_date: document.getElementById('end_date').value,
+                last_matches: document.getElementById('last_matches').value,
+                latest_only: document.getElementById('latest_only').checked,
+                level: document.getElementById('level_filter').value
+            });
+
+            fetch(`/api/stats?${params}`)
+                .then(response => response.json())
+                .then(data => {
+                    const tbody = document.getElementById('stats-body');
+                    tbody.innerHTML = '';
+                    
+                    // 按胜率排序
+                    data.stats.sort((a, b) => parseFloat(b.winrate) - parseFloat(a.winrate));
+                    
+                    data.stats.forEach((stat, index) => {
+                        const row = document.createElement('tr');
+                        // 前五名添加 top-five 类
+                        if (index < 5) {
+                            row.classList.add('top-five');
+                        }
+                        row.innerHTML = `
+                            <td>${stat.class_name}</td>
+                            <td class="winrate">${stat.winrate}%</td>
+                            <td class="matches">${stat.matches}</td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                    
+                    loading.style.display = 'none';
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    loading.style.display = 'none';
+                });
+        }
+    </script>
+</body>
+</html> 
