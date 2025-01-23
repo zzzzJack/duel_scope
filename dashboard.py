@@ -28,6 +28,35 @@ def get_latest_file(game_mode):
         return None
     return max(files, key=lambda x: os.path.getmtime(os.path.join(data_dir, x)))
 
+def parse_timestamp(timestamp):
+    """
+    解析时间戳为datetime对象
+    这里假设时间戳需要特殊处理
+    """
+    # 先将时间戳转换为标准Unix时间戳
+    # 这里需要根据实际情况调整转换逻辑
+    unix_timestamp = timestamp - SOME_OFFSET
+    # 或者
+    unix_timestamp = timestamp / SOME_FACTOR
+    
+    return datetime.fromtimestamp(unix_timestamp)
+
+def process_battle_records(file_path):
+    records = []
+    with open(file_path, 'r') as f:
+        for line in f:
+            if not line.strip():
+                continue
+            
+            parts = line.strip().split(':')
+            if len(parts) != 8:
+                continue
+                
+            timestamp = int(parts[0])
+            dt = parse_timestamp(timestamp)
+            
+            # 其他处理逻辑...
+
 def read_game_data(game_mode, start_date=None, end_date=None, last_matches=None, latest_only=False, level_filter=None):
     """读取指定玩法的对战数据"""
     data = []
@@ -35,6 +64,27 @@ def read_game_data(game_mode, start_date=None, end_date=None, last_matches=None,
     
     if not os.path.exists(data_dir):
         return pd.DataFrame()
+
+    # 转换日期字符串为时间戳进行比较
+    start_timestamp = None
+    end_timestamp = None
+    
+    if start_date:
+        try:
+            start_datetime = datetime.strptime(start_date, '%Y-%m-%d %H:%M')
+            start_timestamp = int(start_datetime.timestamp())
+        except ValueError:
+            start_datetime = datetime.strptime(start_date, '%Y-%m-%d')
+            start_timestamp = int(start_datetime.timestamp())
+        
+    if end_date:
+        try:
+            end_datetime = datetime.strptime(end_date, '%Y-%m-%d %H:%M')
+            end_timestamp = int(end_datetime.timestamp())
+        except ValueError:
+            end_datetime = datetime.strptime(end_date, '%Y-%m-%d')
+            end_datetime = end_datetime.replace(hour=23, minute=59, second=59)
+            end_timestamp = int(end_datetime.timestamp())
 
     files_to_process = []
     if latest_only:
@@ -51,36 +101,32 @@ def read_game_data(game_mode, start_date=None, end_date=None, last_matches=None,
                 for line in f:
                     if line.strip():
                         parts = line.strip().split(':')
-                        if len(parts) == 8:
-                            timestamp, mode, level, class1, deck1, class2, deck2, result = parts
-                            timestamp = int(timestamp)
+                        if len(parts) >= 7:
+                            timestamp = int(parts[0])
+                            
+                            # 日期筛选
+                            if start_timestamp and timestamp < start_timestamp:
+                                continue
+                            if end_timestamp and timestamp > end_timestamp:
+                                continue
+                            
                             date = datetime.fromtimestamp(timestamp)
                             
-                            # 日期筛选 - 添加时分秒
-                            if start_date:
-                                start_datetime = datetime.strptime(f"{start_date} 00:00:00", '%Y-%m-%d %H:%M:%S')
-                                if date < start_datetime:
-                                    continue
-                            if end_date:
-                                end_datetime = datetime.strptime(f"{end_date} 23:59:59", '%Y-%m-%d %H:%M:%S')
-                                if date > end_datetime:
-                                    continue
-                            
                             # 等级筛选
-                            if level_filter and int(level) != int(level_filter):
+                            if level_filter and int(parts[2]) != int(level_filter):
                                 continue
                                 
                             data.append({
                                 'timestamp': timestamp,
                                 'date': date,
-                                'mode': mode,
-                                'level': int(level),
-                                'class1': get_school_name(int(deck1), int(class1)),
-                                'class2': get_school_name(int(deck2), int(class2)),
-                                'result': int(result)
+                                'mode': parts[1],
+                                'level': int(parts[2]),
+                                'class1': get_school_name(int(parts[4]), int(parts[3])),
+                                'class2': get_school_name(int(parts[6]), int(parts[5])),
+                                'result': int(parts[7]) if len(parts) > 7 else 1
                             })
         except Exception as e:
-            print(f"处理文件 {file_path} 时出错: {str(e)}")
+            continue
 
     df = pd.DataFrame(data)
     
@@ -156,7 +202,7 @@ def get_stats():
         return jsonify({'stats': [], 'total_matches': 0})
         
     stats = calculate_winrates(df)
-    total_matches = len(df)  # 计算总场次
+    total_matches = len(df)
     
     return jsonify({
         'stats': stats,
@@ -179,3 +225,13 @@ def index():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True) 
+
+# 检查示例时间戳
+timestamp = 1737512753
+dt = datetime.fromtimestamp(timestamp)
+print(f"时间戳 {timestamp} 对应的时间是: {dt}")
+
+# 获取当前时间戳作为对比
+now = datetime.now()
+current_timestamp = int(now.timestamp())
+print(f"当前时间戳是: {current_timestamp}") 
